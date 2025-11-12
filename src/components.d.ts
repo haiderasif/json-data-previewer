@@ -6,6 +6,34 @@
  */
 import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
 export namespace Components {
+    interface JsonDataViewer {
+        /**
+          * @default []
+         */
+        "data": any[];
+        /**
+          * @default []
+         */
+        "hiddenColumns": string[];
+        /**
+          * @default false
+         */
+        "loading": boolean;
+        /**
+          * @default [5, 10, 25]
+         */
+        "pageSizeOptions": number[];
+        /**
+          * @default 10
+         */
+        "rowsPerPage": number;
+    }
+    interface JsonViewer {
+        /**
+          * The JSON data to display
+         */
+        "data": any;
+    }
     interface MyComponent {
         /**
           * The first name
@@ -22,6 +50,18 @@ export namespace Components {
     }
 }
 declare global {
+    interface HTMLJsonDataViewerElement extends Components.JsonDataViewer, HTMLStencilElement {
+    }
+    var HTMLJsonDataViewerElement: {
+        prototype: HTMLJsonDataViewerElement;
+        new (): HTMLJsonDataViewerElement;
+    };
+    interface HTMLJsonViewerElement extends Components.JsonViewer, HTMLStencilElement {
+    }
+    var HTMLJsonViewerElement: {
+        prototype: HTMLJsonViewerElement;
+        new (): HTMLJsonViewerElement;
+    };
     interface HTMLMyComponentElement extends Components.MyComponent, HTMLStencilElement {
     }
     var HTMLMyComponentElement: {
@@ -29,10 +69,40 @@ declare global {
         new (): HTMLMyComponentElement;
     };
     interface HTMLElementTagNameMap {
+        "json-data-viewer": HTMLJsonDataViewerElement;
+        "json-viewer": HTMLJsonViewerElement;
         "my-component": HTMLMyComponentElement;
     }
 }
 declare namespace LocalJSX {
+    interface JsonDataViewer {
+        /**
+          * @default []
+         */
+        "data"?: any[];
+        /**
+          * @default []
+         */
+        "hiddenColumns"?: string[];
+        /**
+          * @default false
+         */
+        "loading"?: boolean;
+        /**
+          * @default [5, 10, 25]
+         */
+        "pageSizeOptions"?: number[];
+        /**
+          * @default 10
+         */
+        "rowsPerPage"?: number;
+    }
+    interface JsonViewer {
+        /**
+          * The JSON data to display
+         */
+        "data"?: any;
+    }
     interface MyComponent {
         /**
           * The first name
@@ -48,6 +118,8 @@ declare namespace LocalJSX {
         "middle"?: string;
     }
     interface IntrinsicElements {
+        "json-data-viewer": JsonDataViewer;
+        "json-viewer": JsonViewer;
         "my-component": MyComponent;
     }
 }
@@ -55,6 +127,8 @@ export { LocalJSX as JSX };
 declare module "@stencil/core" {
     export namespace JSX {
         interface IntrinsicElements {
+            "json-data-viewer": LocalJSX.JsonDataViewer & JSXBase.HTMLAttributes<HTMLJsonDataViewerElement>;
+            "json-viewer": LocalJSX.JsonViewer & JSXBase.HTMLAttributes<HTMLJsonViewerElement>;
             "my-component": LocalJSX.MyComponent & JSXBase.HTMLAttributes<HTMLMyComponentElement>;
         }
     }
