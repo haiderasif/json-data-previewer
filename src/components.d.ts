@@ -12,19 +12,7 @@ export namespace Components {
          */
         "data": any[];
         /**
-          * @default []
-         */
-        "hiddenColumns": string[];
-        /**
-          * @default false
-         */
-        "loading": boolean;
-        /**
-          * @default [5, 10, 25]
-         */
-        "pageSizeOptions": number[];
-        /**
-          * @default 10
+          * @default 5
          */
         "rowsPerPage": number;
     }
@@ -81,19 +69,7 @@ declare namespace LocalJSX {
          */
         "data"?: any[];
         /**
-          * @default []
-         */
-        "hiddenColumns"?: string[];
-        /**
-          * @default false
-         */
-        "loading"?: boolean;
-        /**
-          * @default [5, 10, 25]
-         */
-        "pageSizeOptions"?: number[];
-        /**
-          * @default 10
+          * @default 5
          */
         "rowsPerPage"?: number;
     }

@@ -1,4 +1,5 @@
 import { Component, Prop, State, h } from '@stencil/core';
+import { JSX } from '@stencil/core/internal'; // ✅ Fix for JSX namespace error
 
 @Component({
   tag: 'json-data-viewer',
@@ -7,204 +8,173 @@ import { Component, Prop, State, h } from '@stencil/core';
 })
 export class JsonDataViewer {
   @Prop() data: any[] = [];
-  @Prop() loading: boolean = false;
-  @Prop() rowsPerPage: number = 10;
-  @Prop() pageSizeOptions: number[] = [5, 10, 25];
-  @Prop() hiddenColumns: string[] = [];
+  @Prop() rowsPerPage: number = 5;
 
-  @State() private searchQuery: string = '';
-  @State() private currentPage: number = 1;
-  @State() private selectedPageSize: number = 10;
-  @State() private showNestedDialog: boolean = false;
-  @State() private nestedData: any = null;
-  @State() private nestedDataTitle: string = '';
-  @State() private sortConfig: { field: string; direction: 'asc' | 'desc' } | null = null;
+  @State() currentPage: number = 1;
+  @State() showModal: boolean = false;
+  @State() modalData: any = null;
+  @State() modalTitle: string = '';
 
-  componentWillLoad() {
-    this.selectedPageSize = this.rowsPerPage;
-  }
-
-  private get visibleColumns() {
-    return this.columns;
-  }
-
-  private get columns(): { field: string; header: string }[] {
-    if (!this.data?.length) return [];
-
-    const fields = new Set<string>();
-    this.data.forEach(item => {
-      Object.keys(item).forEach(key => fields.add(key));
-    });
-
-    return Array.from(fields).map(field => ({
-      field,
-      header: this.formatHeader(field),
-    }));
-  }
+  @State() expandedPaths: Set<string> = new Set();
 
   private get paginatedData() {
-    const start = (this.currentPage - 1) * this.selectedPageSize;
-    const end = start + this.selectedPageSize;
-    return this.sortedData.slice(start, end);
+    const start = (this.currentPage - 1) * this.rowsPerPage;
+    return this.data.slice(start, start + this.rowsPerPage);
   }
 
-  private get sortedData() {
-    if (!this.sortConfig) return this.filteredData;
-
-    return [...this.filteredData].sort((a, b) => {
-      const valA = a[this.sortConfig.field];
-      const valB = b[this.sortConfig.field];
-
-      if (valA < valB) return this.sortConfig.direction === 'asc' ? -1 : 1;
-      if (valA > valB) return this.sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
+  private handlePageChange(direction: 'next' | 'prev') {
+    if (direction === 'next' && this.currentPage * this.rowsPerPage < this.data.length) {
+      this.currentPage++;
+    } else if (direction === 'prev' && this.currentPage > 1) {
+      this.currentPage--;
+    }
   }
 
-  private get filteredData() {
-    if (!this.searchQuery) return this.data;
-
-    const query = this.searchQuery.toLowerCase();
-    return this.data.filter(item => Object.entries(item).some(([_, val]) => val && String(val).toLowerCase().includes(query)));
-  }
-
-  private formatHeader(key: string): string {
-    return key
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
-      .replace(/_/g, ' ');
-  }
-
-  private handleSort(field: string) {
-    if (!this.sortConfig || this.sortConfig.field !== field) {
-      this.sortConfig = { field, direction: 'asc' };
-    } else {
-      this.sortConfig = {
-        field,
-        direction: this.sortConfig.direction === 'asc' ? 'desc' : 'asc',
-      };
+  private tryParseJson(value: any) {
+    if (typeof value !== 'string') return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
     }
   }
 
   private showNestedData(data: any, title: string) {
-    this.nestedData = data;
-    this.nestedDataTitle = title;
-    this.showNestedDialog = true;
+    this.modalData = this.tryParseJson(data);
+    this.modalTitle = title;
+    this.expandedPaths = new Set(); // reset expanded state
+    this.showModal = true;
+  }
+
+  private toggleExpand(path: string) {
+    if (this.expandedPaths.has(path)) {
+      this.expandedPaths.delete(path);
+    } else {
+      this.expandedPaths.add(path);
+    }
+    this.expandedPaths = new Set(this.expandedPaths); // trigger re-render
+  }
+
+  private renderJson(value: any, path: string = ''): JSX.Element {
+    if (value === null) return <span class="json-null">null</span>;
+
+    if (typeof value === 'string') return <span class="json-string">"{value}"</span>;
+
+    if (typeof value === 'number' || typeof value === 'boolean') return <span class="json-primitive">{String(value)}</span>;
+
+    if (Array.isArray(value)) {
+      const isExpanded = this.expandedPaths.has(path);
+      return (
+        <div class="json-array">
+          <span class="collapsible-toggle" onClick={() => this.toggleExpand(path)}>
+            {isExpanded ? '▼' : '▶'} Array[{value.length}]
+          </span>
+          {isExpanded && (
+            <div class="json-indent">
+              {value.map((item, i) => (
+                <div key={i}>
+                  {this.renderJson(item, path + '.' + i)}
+                  {i < value.length - 1 ? ',' : ''}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (typeof value === 'object') {
+      const keys = Object.keys(value);
+      const isExpanded = this.expandedPaths.has(path);
+      return (
+        <div class="json-object">
+          <span class="collapsible-toggle" onClick={() => this.toggleExpand(path)}>
+            {isExpanded ? '▼' : '▶'} Object{'{...}'}
+          </span>
+          {isExpanded && (
+            <div class="json-indent">
+              {keys.map((key, i) => (
+                <div key={key}>
+                  <span class="json-key">"{key}"</span>: {this.renderJson(value[key], path + '.' + key)}
+                  {i < keys.length - 1 ? ',' : ''}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return <span>{String(value)}</span>;
   }
 
   render() {
-    const totalPages = Math.ceil(this.filteredData.length / this.selectedPageSize);
-
     return (
-      <div class="json-data-viewer">
-        {/* Header and Controls */}
-        <div class="header">
-          <div class="controls">
-            <div class="search-control">
-              <span class="search-icon">🔍</span>
-              <input
-                type="text"
-                value={this.searchQuery}
-                onInput={(e: Event) => (this.searchQuery = (e.target as HTMLInputElement).value)}
-                placeholder="Search..."
-                class="search-input"
-              />
-            </div>
-
-            <div class="page-controls">
-              <select
-                onInput={(e: Event) => {
-                  this.selectedPageSize = Number((e.target as HTMLSelectElement).value);
-                  this.currentPage = 1;
-                }}
-                class="page-size-select"
-              >
-                {this.pageSizeOptions.map(size => (
-                  <option value={size} selected={size === this.selectedPageSize}>
-                    {size} per page
-                  </option>
-                ))}
-              </select>
-
-              <button onClick={() => (this.currentPage = Math.max(1, this.currentPage - 1))} disabled={this.currentPage === 1} class="pagination-button">
-                ◀
-              </button>
-
-              <span class="page-info">
-                Page {this.currentPage} of {totalPages}
-              </span>
-
-              <button onClick={() => (this.currentPage = Math.min(totalPages, this.currentPage + 1))} disabled={this.currentPage >= totalPages} class="pagination-button">
-                ▶
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Data Table */}
-        <div class="data-table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                {this.visibleColumns.map(col => (
-                  <th
-                    key={col.field}
-                    onClick={() => this.handleSort(col.field)}
-                    class={`
-                      ${this.sortConfig?.field === col.field ? 'sorted' : ''}
-                      ${this.sortConfig?.field === col.field && this.sortConfig.direction === 'desc' ? 'desc' : ''}
-                    `}
-                  >
-                    {col.header}
-                    {this.sortConfig?.field === col.field && <span class="sort-icon">{this.sortConfig.direction === 'asc' ? '↑' : '↓'}</span>}
-                  </th>
-                ))}
+      <div class="viewer-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Value</th>
+              <th>Time</th>
+              <th>Value Info</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {this.paginatedData.map((row, index) => (
+              <tr key={index}>
+                <td>{row.name}</td>
+                <td>{row.type}</td>
+                <td class="value-cell">
+                  {typeof row.value === 'object' || row.type === 'Json' ? (
+                    <button class="view-btn" onClick={() => this.showNestedData(row.value, row.name)}>
+                      🔍 View
+                    </button>
+                  ) : (
+                    row.value
+                  )}
+                </td>
+                <td>{row.time}</td>
+                <td>{JSON.stringify(row.valueInfo || {})}</td>
+                <td>
+                  <button class="view-btn" onClick={() => this.showNestedData(row.value, row.name)}>
+                    View
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {this.paginatedData.map((item, index) => (
-                <tr key={index}>
-                  {this.visibleColumns.map(col => {
-                    const fieldValue = item[col.field];
-                    return (
-                      <td key={`${index}-${col.field}`}>
-                        {fieldValue === null || fieldValue === undefined ? (
-                          <span class="empty-cell">—</span>
-                        ) : typeof fieldValue === 'object' ? (
-                          <button onClick={() => this.showNestedData(fieldValue, col.header)} class="expand-button">
-                            <span class="expand-icon">🔍</span>
-                            View
-                          </button>
-                        ) : (
-                          <span class="cell-value">{String(fieldValue)}</span>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))}
+          </tbody>
+        </table>
+
+        <div class="pagination">
+          <button onClick={() => this.handlePageChange('prev')} disabled={this.currentPage === 1}>
+            Prev
+          </button>
+          <span>
+            Page {this.currentPage} of {Math.ceil(this.data.length / this.rowsPerPage)}
+          </span>
+          <button onClick={() => this.handlePageChange('next')} disabled={this.currentPage * this.rowsPerPage >= this.data.length}>
+            Next
+          </button>
         </div>
 
-        {/* Nested Data Dialog */}
-        {this.showNestedDialog && (
-          <div class="dialog-overlay">
-            <div class="dialog">
-              <div class="dialog-header">
-                <h3>{this.nestedDataTitle}</h3>
-                <button onClick={() => (this.showNestedDialog = false)} class="close-button">
-                  ✕
+        {this.showModal && (
+          <div class="modal-backdrop" onClick={() => (this.showModal = false)}>
+            <div class="modal-content" onClick={e => e.stopPropagation()}>
+              <div class="modal-header">
+                <h3>{this.modalTitle}</h3>
+                <button class="close-button" onClick={() => (this.showModal = false)}>
+                  ✖
                 </button>
               </div>
-              <div class="dialog-content">
-                <json-viewer data={this.nestedData} />
+              <div class="modal-body">
+                <pre class="json-pretty">{this.renderJson(this.modalData)}</pre>
               </div>
             </div>
           </div>
         )}
-
-        {this.loading && <div class="loading-overlay">Loading...</div>}
       </div>
     );
   }
