@@ -1,6 +1,6 @@
 {
   "name": "json-data-viewer",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A customizable JSON data viewer component",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
