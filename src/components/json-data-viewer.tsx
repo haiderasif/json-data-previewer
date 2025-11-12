@@ -1,4 +1,4 @@
-import { Component, Prop, State, h, Watch } from '@stencil/core';
+import { Component, Prop, State, h } from '@stencil/core';
 
 @Component({
   tag: 'json-data-viewer',
@@ -18,26 +18,14 @@ export class JsonDataViewer {
   @State() private showNestedDialog: boolean = false;
   @State() private nestedData: any = null;
   @State() private nestedDataTitle: string = '';
-  @State() private columnVisibility: { [key: string]: boolean } = {};
   @State() private sortConfig: { field: string; direction: 'asc' | 'desc' } | null = null;
-  @State() private showColumnDropdown: boolean = false;
 
   componentWillLoad() {
     this.selectedPageSize = this.rowsPerPage;
-    this.initializeColumnVisibility();
-  }
-
-  private initializeColumnVisibility() {
-    this.columnVisibility = {}; // reset before repopulating
-    if (this.data?.length) {
-      Object.keys(this.data[0]).forEach(key => {
-        this.columnVisibility[key] = true; // show all columns
-      });
-    }
   }
 
   private get visibleColumns() {
-    return this.columns.filter(col => this.columnVisibility[col.field]);
+    return this.columns;
   }
 
   private get columns(): { field: string; header: string }[] {
@@ -77,7 +65,7 @@ export class JsonDataViewer {
     if (!this.searchQuery) return this.data;
 
     const query = this.searchQuery.toLowerCase();
-    return this.data.filter(item => Object.entries(item).some(([key, val]) => this.columnVisibility[key] && val && String(val).toLowerCase().includes(query)));
+    return this.data.filter(item => Object.entries(item).some(([_, val]) => val && String(val).toLowerCase().includes(query)));
   }
 
   private formatHeader(key: string): string {
@@ -85,13 +73,6 @@ export class JsonDataViewer {
       .replace(/([A-Z])/g, ' $1')
       .replace(/^./, str => str.toUpperCase())
       .replace(/_/g, ' ');
-  }
-
-  private toggleColumnVisibility(column: string) {
-    this.columnVisibility = {
-      ...this.columnVisibility,
-      [column]: !this.columnVisibility[column],
-    };
   }
 
   private handleSort(field: string) {
@@ -111,13 +92,6 @@ export class JsonDataViewer {
     this.showNestedDialog = true;
   }
 
-  @Watch('data')
-  onDataChange(newValue: any[]) {
-    if (newValue && newValue.length) {
-      this.initializeColumnVisibility();
-    }
-  }
-
   render() {
     const totalPages = Math.ceil(this.filteredData.length / this.selectedPageSize);
 
@@ -135,22 +109,6 @@ export class JsonDataViewer {
                 placeholder="Search..."
                 class="search-input"
               />
-            </div>
-
-            <div class="column-dropdown">
-              <button class="dropdown-button" onClick={() => (this.showColumnDropdown = !this.showColumnDropdown)}>
-                Hide Fields ▼
-              </button>
-              {this.showColumnDropdown && (
-                <div class="dropdown-content">
-                  {this.columns.map(col => (
-                    <label class="dropdown-item">
-                      <input type="checkbox" checked={this.columnVisibility[col.field]} onChange={() => this.toggleColumnVisibility(col.field)} />
-                      {col.header}
-                    </label>
-                  ))}
-                </div>
-              )}
             </div>
 
             <div class="page-controls">
