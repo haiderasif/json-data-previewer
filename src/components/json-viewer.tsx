@@ -1,5 +1,5 @@
-// json-viewer.tsx
-import { Component, Prop, h } from '@stencil/core';
+import { Component, Prop, h, Element } from '@stencil/core';
+import 'json-viewer-js'; // the web component automatically registers itself
 
 @Component({
   tag: 'json-viewer',
@@ -7,14 +7,19 @@ import { Component, Prop, h } from '@stencil/core';
   shadow: true,
 })
 export class JsonViewer {
-  /**
-   * The JSON data to display
-   */
   @Prop() data: any;
+  @Element() el: HTMLElement;
+
+  componentDidLoad() {
+    if (this.data) {
+      const viewer = document.createElement('json-viewer');
+      viewer.data = this.data;
+      viewer.setAttribute('theme', 'light');
+      this.el.shadowRoot.appendChild(viewer);
+    }
+  }
 
   render() {
-    if (!this.data) return null;
-
-    return <pre>{JSON.stringify(this.data, null, 2)}</pre>;
+    return <div></div>;
   }
 }

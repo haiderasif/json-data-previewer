@@ -29,9 +29,6 @@ export namespace Components {
         "rowsPerPage": number;
     }
     interface JsonViewer {
-        /**
-          * The JSON data to display
-         */
         "data": any;
     }
     interface MyComponent {
@@ -98,9 +95,6 @@ declare namespace LocalJSX {
         "rowsPerPage"?: number;
     }
     interface JsonViewer {
-        /**
-          * The JSON data to display
-         */
         "data"?: any;
     }
     interface MyComponent {
